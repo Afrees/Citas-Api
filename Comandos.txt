@@ -1,0 +1,557 @@
+##### **HELPERS BY GABRIEL MUÑOZ**
+
+
+
+
+
+* ###### **WORKFLOW**
+
+
+Crear Proyecto 
+composer create-project laravel/laravel proyecto-laravel
+
+Crear Modelos y migraciones
+php artisan make:model User -mr
+
+Ejemplo para API directamente:
+php artisan make:controller ExamenController --api --model=Examen
+
+
+
+
+1\. Iniciar el proyecto
+
+   │
+
+   ├── php artisan install:api
+
+   │     (Instala las dependencias para API)
+
+   │
+
+2\. Crear el RouteServiceProvider para versionado de API
+
+   │
+
+   ├── php artisan make:provider RouteServiceProvider
+
+   │     (Genera el proveedor de rutas)
+
+   │
+
+   ├── Establecer el versionado con el prefix `v1` en el `RouteServiceProvider`
+
+   │     - Modificar `app/Providers/RouteServiceProvider.php`
+
+   │     - Añadir:
+
+   │       ```php
+
+   │       Route::prefix('v1')->group(function() { ... });
+
+   │       ```
+
+   │
+
+3\. Crear migraciones
+
+   │
+
+   ├── php artisan make:migration create\_{nombre}\_table
+
+   │     (Generar migraciones para las tablas)
+
+   │
+
+   ├── Definir las relaciones en las migraciones (si las hay)
+
+   │
+
+   ├── Ejecutar las migraciones
+
+   │     └── php artisan migrate
+
+   │
+
+4\. Crear modelos con relaciones y scopes
+
+   │
+
+   ├── php artisan make:model {NombreDelModelo} -m
+
+   │     (Genera el modelo junto con la migración)
+
+   │
+
+   ├── Definir las relaciones (HasMany, BelongsTo, etc.)
+
+   │
+
+   ├── Definir los scopes (por ejemplo: `scopeActive()`, `scopeLatest()`, etc.)
+
+   │
+
+5\. Crear controladores
+
+   │
+
+   ├── php artisan make:controller {NombreDelControlador}
+
+   │     (Genera los controladores para manejar la lógica)
+
+   │
+
+   ├── Incluir los métodos en los controladores:
+
+   │     - `index()`, `store()`, `update()`, `destroy()`
+
+   │     - Validar entradas con Request (más abajo)
+
+   │
+
+6\. Crear Request para validación en Store y Update
+
+   │
+
+   ├── php artisan make:request {NombreDelRequest}
+
+   │     (Genera clases de validación personalizadas)
+
+   │
+
+   ├── Definir las reglas de validación en `rules()` dentro del Request
+
+   │     - Ejemplo:
+
+   │       ```php
+
+   │       public function rules() {
+
+   │           return \[
+
+   │               'title' => 'required|string|max:255',
+
+   │               'body'  => 'required|string',
+
+   │           ];
+
+   │       }
+
+   │       ```
+
+7\. Crear servicios para manejar la lógica de negocio
+
+   │
+
+   ├── Crear interfaces para definir la estructura del servicio
+
+   │     (por ejemplo: `PostServiceInterface.php`)
+
+   │
+
+   ├── Crear clases que implementen esas interfaces
+
+   │     - Ejemplo:
+
+   │       ```php
+
+   │       class PostService implements PostServiceInterface {
+
+   │           public function createPost($data) { ... }
+
+   │           public function updatePost($id, $data) { ... }
+
+   │       }
+
+   │       ```
+
+8\. Registrar los servicios en el AppServiceProvider
+
+   │
+
+   ├── Ir a `app/Providers/AppServiceProvider.php`
+
+   │
+
+   ├── Registrar las interfaces con sus implementaciones
+
+   │     - En el método `register()`, añadir:
+
+   │       ```php
+
+   │       $this->app->bind(
+
+   │           PostServiceInterface::class,
+
+   │           PostService::class
+
+   │       );
+
+   │       ```
+
+9\. Registrar rutas
+
+   │
+
+   ├── Crear las rutas dentro del grupo `v1` (si no está hecho ya)
+
+   │
+
+   ├── Registrar las rutas de la API en `routes/api.php`
+
+   │     - Ejemplo de ruta:
+
+   │       ```php
+
+   │       Route::post('posts', \[PostController::class, 'store']);
+
+   │       Route::put('posts/{id}', \[PostController::class, 'update']);
+
+   │       ```
+
+10\. Probar con  Postman
+
+    │
+
+    ├── Testear los métodos de la API (GET, POST, PUT, DELETE)
+
+    └── Verificar que la lógica funcione correctamente
+
+
+
+
+
+
+
+###### 
+
+* ###### **POLYMORPHIC RELATIONSHIPS**
+
+
+
+
+
+1\. Modelo Post
+
+   └── hasMany: Comment
+
+        │
+
+        └── Relación Polimórfica (commentable)
+
+
+
+2\. Modelo Product
+
+   └── hasMany: Comment
+
+        │
+
+        └── Relación Polimórfica (commentable)
+
+
+
+3\. Modelo Comment
+
+   └── morphTo: Commentable (puede ser Post o Product)
+
+        │
+
+        └── Relación Polimórfica Inversa
+
+
+
+
+
+* **Tabla post**
+
+
+
+public function up()
+
+{
+
+    Schema::create('posts', function (Blueprint $table) {
+
+        $table->id();
+
+        $table->string('title');
+
+        $table->text('body');
+
+        $table->timestamps();
+
+    });
+
+}
+
+
+
+
+
+* **Tabla productos**
+
+
+
+public function up()
+
+{
+
+    Schema::create('products', function (Blueprint $table) {
+
+        $table->id();
+
+        $table->string('name');
+
+        $table->decimal('price', 8, 2);
+
+        $table->timestamps();
+
+    });
+
+}
+
+
+
+
+
+
+
+* **tabla polimórfica**
+
+
+
+public function up()
+
+{
+
+    Schema::create('comments', function (Blueprint $table) {
+
+        $table->id();
+
+        $table->text('content');
+
+ 
+
+        // Clave polimórfica
+
+        $table->morphs('commentable'); // Esto genera dos columnas: commentable\_id y commentable\_type
+
+ 
+
+        $table->timestamps();
+
+    });
+
+}
+
+
+
+
+
+**Relaciones en los modelos**
+
+
+
+
+
+class Post extends Model
+
+{
+
+    public function comments()
+
+    {
+
+        return $this->morphMany(Comment::class, 'commentable');
+
+    }
+
+}
+
+
+
+
+
+class Product extends Model
+
+{
+
+    public function comments()
+
+    {
+
+        return $this->morphMany(Comment::class, 'commentable');
+
+    }
+
+}
+
+
+
+
+
+class Comment extends Model
+
+{
+
+    public function commentable()
+
+    {
+
+        return $this->morphTo();
+
+    }
+
+}
+
+
+
+
+
+Algo de ORM
+
+
+
+Comentario apra un post
+
+
+
+$post = Post::find(1); // Encuentra un post por ID
+
+$comment = new Comment(\['content' => '¡Gran publicación!']);
+
+$post->comments()->save($comment); // Guarda el comentario relacionado al post
+
+
+
+
+
+Esto es para crear un comentario de un producto
+
+
+
+$product = Product::find(1); // Encuentra un producto por ID
+
+$comment = new Comment(\['content' => '¡Excelente producto!']);
+
+$product->comments()->save($comment); // Guarda el comentario relacionado al producto
+
+
+
+
+
+Obtenemos los comentarios de un post
+
+
+
+$post = Post::find(1);
+
+$comments = $post->comments; // Obtiene todos los comentarios asociados al post
+
+
+
+
+
+
+
+**Sumarize**
+
+
+
+1\. Modelo Post
+
+   └── hasMany: Comment
+
+        │
+
+        └── Relación Polimórfica (commentable)
+
+
+
+2\. Modelo Product
+
+   └── hasMany: Comment
+
+        │
+
+        └── Relación Polimórfica (commentable)
+
+
+
+3\. Modelo Comment
+
+   └── morphTo: Commentable (puede ser Post o Product)
+
+        │
+
+        └── Relación Polimórfica Inversa
+
+
+
+
+
+
+
+* ###### **VHOST**
+
+
+
+
+
+C:\\xampp\\apache\\conf\\extra
+
+
+
+<VirtualHost \*>
+
+ 	DocumentRoot "C:\\xampp\\htdocs\\api.codersfree\\public"
+
+ 	ServerName api.codersfree.test
+
+ 	<Directory "C:\\xampp\\htdocs\\api.codersfree\\public">
+
+ 		Options All
+
+ 		AllowOverride All
+
+ 		Require all granted
+
+ 	</Directory>
+
+</VirtualHost>
+
+
+
+
+
+
+
+C:\\Windows\\System32\\drivers\\etc.
+
+
+
+127.0.0.1 example
+
+
+
+
+
+Y modificar el .env
+
+
+
+
+
+**Comandos**
+
+
+
+php artisan make:interface Services/ExampleService
+
+
+
+php artisan make:class Services/Impl/ExampleServiceImpl
+
+
+
